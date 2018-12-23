@@ -2,56 +2,54 @@ import requests
 from bs4 import BeautifulSoup
 import xlwt
 import time
+import ershoufang
+import mydb
+
+ershoufang.get_pos_url()
+ershoufang.get_sub_pos_url()
+ershoufang.get_page_url()
+
+#url = 'https://sh.lianjia.com/ershoufang/'
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'}
 
-#url = 'https://sh.lianjia.com/ershoufang/pudong/PG'+str(j)+'P2/'
+Cells = []
+TotalP = []
+UnitP = []
+High = []
+TotalH = []
+HouseYear = []
+HousePos = []
+HouseUrl = []
+HouseType = []
+HouseSize = []
+HouseInter = []
 
-Cells = {}
-TotalP = {}
-UnitP = {}
-High = {}
-TotalH = {}
-HouseYear = {}
-HousePos = {}
-HouseUrl = {}
-HouseType = {}
-HouseSize = {}
-HouseDirect = {}
-HouseInter = {}
-HouseEle = {}
+def getdata(url):
+    print(url)
+    res = requests.get(url,headers = headers)
+    soup = BeautifulSoup(res.content,features="html.parser")
+    houseInfo = soup.select('div.houseInfo a')
+    houseSize = soup.select('div.houseInfo')
+    houseTitle = soup.select('div.title a')
+    totalPrice = soup.select('div.totalPrice span')
+    unitPrice = soup.select('div.unitPrice span')
+    position = soup.select('div.positionInfo')
 
-def getdata(price,page):
-
-    for j in range(0,page):
-        print(j)
-        url = 'https://sh.lianjia.com/ershoufang/pudong/PG' + str(j) + price+'/'
-        res = requests.get(url,headers = headers)
-        soup = BeautifulSoup(res.content,features="html.parser")
-
-        houseInfo = soup.select('div.houseInfo a')
-        houseSize = soup.select('div.houseInfo')
-        houseTitle = soup.select('div.title a')
-        totalPrice = soup.select('div.totalPrice span')
-        unitPrice = soup.select('div.unitPrice span')
-        position = soup.select('div.positionInfo')
-
-        for i in range(0, 30):
-            HousePos[i +30*j] = position[i].getText().split('-')[1]
-            HouseYear[i+30*j] = position[i].getText().split(')')[1][0:4]
-            TotalH[i+30*j] = position[i].getText().split(')')[0][5:-1]
-            High[i+30*j] = position[i].getText().split('(')[0]
-            Cells[i+30*j] = houseSize[i].getText().split('|')[0]
-            HouseType[i+30*j] = houseSize[i].getText().split('|')[1]
-            HouseSize[i+30*j] = houseSize[i].getText().split('|')[2][:-3]
-            HouseDirect[i+30*j] = houseSize[i].getText().split('|')[3]
-            HouseInter[i+30*j] = houseSize[i].getText().split('|')[4]
-            #HouseEle[i+30*j] = houseSize[i].getText().split('|')[5]
-            TotalP[i+30*j] = totalPrice[i].getText()
-            UnitP[i+30*j] = unitPrice[i].getText()[2:-4]
-            HouseUrl[i+30*j] = houseTitle[i].get('href')
-        time.sleep(1)
-
+    for i in range(0, 30):
+        print(i)
+        HousePos.append(position[i].getText().split('-')[1])
+        HouseYear.append(position[i].getText().split(')')[1][0:4]) 
+        TotalH.append(position[i].getText().split(')')[0][5:-1])
+        High.append(position[i].getText().split('(')[0])
+        Cells.append(houseSize[i].getText().split('|')[0]) 
+        HouseType.append(houseSize[i].getText().split('|')[1]) 
+        HouseSize.append(houseSize[i].getText().split('|')[2][:-3]) 
+        HouseInter.append(houseSize[i].getText().split('|')[4]) 
+        TotalP.append(totalPrice[i].getText())
+        UnitP.append(unitPrice[i].getText()[2:-4]) 
+        HouseUrl.append(houseTitle[i].get('href')) 
+'''
 def write_data(page):
     data = xlwt.Workbook()
     table=data.add_sheet('Lianjia')
@@ -65,7 +63,6 @@ def write_data(page):
     table.write(row, col + 4, '房龄')
     table.write(row, col + 5, '户型')
     table.write(row, col + 6, '面积')
-    table.write(row, col + 7, '朝向')
     table.write(row, col + 8, '总价')
     table.write(row, col + 9, '单价')
     table.write(row, col + 10,'装修')
@@ -88,10 +85,15 @@ def write_data(page):
         row=row+1
         col=0
     data.save('Pudong300_400.xls')
+'''
+def data_to_db():
+    for i in range (0,len(Cells)):
+        mydb.update_table(HousePos[i],Cells[i],High[i],TotalH[i],HouseYear[i],HouseType[i],HouseSize[i],TotalP[i],UnitP[i],HouseInter[i],HouseUrl[i])
+        print("Update infor of ",i)
 
-def main():
-    getdata('P3',page)
-    write_data(page)
+def main(url):
+    print(url)
+    getdata(url)
+    data_to_db()
 
-page = 20
-main()
+main(url)
