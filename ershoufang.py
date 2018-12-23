@@ -31,6 +31,7 @@ def get_sub_pos_url():
         for sub_url in pos_url:
                 sub_res = requests.get(url = sub_url,headers = headers)
                 sub_result = etree.HTML(sub_res.text)
+                time.sleep(random.randint(0, 300))
                 sub_pos_xpath = sub_result.xpath('/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href')
         for sub_pos in sub_pos_xpath:
                 sub_pos_url.append('https://sh.lianjia.com'+str(sub_pos))
@@ -43,6 +44,7 @@ def get_page_url():
         print("Enter get_page_url")
         get_sub_pos_url_starttime = datetime.datetime.now()
         for sub_page_url in sub_pos_url:
+                time.sleep(random.randint(0, 300))
                 sub_page_res = requests.get(url = sub_page_url,headers = headers)
                 sub_page_result = etree.HTML(sub_page_res.text)
                 sub_page_xpah = sub_page_result.xpath('/html/body/div[4]/div[1]/div[8]/div[2]/div/a[position()<last()]/@href')
@@ -52,12 +54,4 @@ def get_page_url():
         print("Finish get_page_url")
         get_sub_pos_url_endtime = datetime.datetime.now()
         print ((get_sub_pos_url_endtime - get_sub_pos_url_starttime).seconds)
-
-def main():
-        mydb.create_db()
-        mydb.create_table()
-        for url in page_urls:
-                lianjia.main()
-
-main()
 
