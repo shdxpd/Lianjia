@@ -1,34 +1,18 @@
-# -*- coding: utf-8 -*-
 import requests
-from bs4 import BeautifulSoup
-import xlwt
+from lxml import etree
+import datetime
 import time
 import mydb
 import random
-
-from lxml import etree
-import datetime
-
 
 url = 'https://sh.lianjia.com/ershoufang/'
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'}
 
-Cells = []
-TotalP = []
-UnitP = []
-High = []
-TotalH = []
-HouseYear = []
-HousePos = []
-HouseUrl = []
-HouseType = []
-HouseSize = []
-HouseInter = []
-
 pos_url = []      #Store ershoufang pos url
 sub_pos_url = []  #Store sub pos url
 page_urls = []
+house_urls=[]
 
 
 def get_pos_url():
@@ -76,45 +60,48 @@ def get_page_url():
     get_sub_pos_url_endtime = datetime.datetime.now()
     print ('Total get_page_url times is :',(get_sub_pos_url_endtime - get_sub_pos_url_starttime).seconds)
 
-def getdata(getdata_url):
-    print('Begain to get data for url :',getdata_url)
+def get_house_url():
+    for house_url in page_urls:
+        print("Start get_house_url",house_url)
+        time.sleep(random.random())
+        hose_req = requests.get(url = house_url,headers = headers)
+        hose_result = etree.HTML(hose_req.text)
+        xpath_result = hose_result.xpath('/html/body/div[4]/div[1]/ul/li[position()<last()+1]/a/@href')
+        for url in xpath_result:
+            print(url)
+            house_urls.append(url)
+    print('Finish get_houss_url',house_url)
+    
+def get_house_info(url):
+    print('Begain to get_house_info for url :',url)
     time.sleep(random.random())
-    res = requests.get(user = getdata_url,headers = headers)
-    soup = BeautifulSoup(res.content,features="html.parser")
-    houseInfo = soup.select('div.houseInfo a')
-    houseSize = soup.select('div.houseInfo')
-    houseTitle = soup.select('div.title a')
-    totalPrice = soup.select('div.totalPrice span')
-    unitPrice = soup.select('div.unitPrice span')
-    position = soup.select('div.positionInfo')
-
-    for i in range(0, len(houseInfo)):
-        print(i)
-        HousePos.append(position[i].getText().split('-')[1])
-        HouseYear.append(position[i].getText().split(')')[1][0:4]) 
-        TotalH.append(position[i].getText().split(')')[0][5:-1])
-        High.append(position[i].getText().split('(')[0])
-        Cells.append(houseSize[i].getText().split('|')[0]) 
-        HouseType.append(houseSize[i].getText().split('|')[1]) 
-        HouseSize.append(houseSize[i].getText().split('|')[2][:-3]) 
-        HouseInter.append(houseSize[i].getText().split('|')[4]) 
-        TotalP.append(totalPrice[i].getText())
-        UnitP.append(unitPrice[i].getText()[2:-4]) 
-        HouseUrl.append(houseTitle[i].get('href')) 
-
+    req = requests.get(url = url,headers = headers)
+    result = etree.HTML(req.text)
+    TotalPrice = result.xpath('/html/body/div[5]/div[2]/div[2]/span[1]/text()')[0]
+    UnitPrice = result.xpath('/html/body/div[5]/div[2]/div[2]/div[1]/div[1]/span/text()')[0]
+    Rom_mainInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[1]/div[1]/text()')[0]       #2室两厅
+    Rom_subInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[1]/div[2]/text()')[0]        #低楼层/共12层
+    Area_mainInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[3]/div[1]/text()')[0]       #112.1平米
+    Area_subInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[3]/div[2]/text()')[0]        #2008年建/板楼
+    areaName = result.xpath('/html/body/div[5]/div[2]/div[4]/div[2]/span[2]/text()')[0]          #浦东 金杨 内环至中环
+    return(TotalPrice,UnitPrice,Rom_mainInfo,Rom_subInfo,Area_mainInfo,Area_subInfo,areaName)
+    
+    
 def data_to_db():
     for i in range (0,len(Cells)):
         mydb.update_table(HousePos[i],Cells[i],High[i],TotalH[i],HouseYear[i],HouseType[i],HouseSize[i],TotalP[i],UnitP[i],HouseInter[i],HouseUrl[i])
         print("Update infor of ",i)
 
 def main():
-    get_pos_url()
-    get_sub_pos_url()
-    get_page_url()
+#    get_pos_url()'ascii' codec can't encode character u'\u5ba4' in position 1: ordinal not in range(128)
+#    get_sub_pos_url()
+#    get_page_url()
+#    get_house_url()
+    print(get_house_info('https://sh.lianjia.com/ershoufang/107100503895.html'))
 #    mydb.create_db()
 #    mydb.create_table()
-    for page_url in page_urls:
-        print(page_url)
+#    for url in house_urls:
+#        print(url)
 #        getdata(page_url)
 #        data_to_db()
 main()
