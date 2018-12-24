@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: <utf-8> -*-
 import requests
 from lxml import etree
 import datetime
@@ -10,7 +12,7 @@ url = 'https://sh.lianjia.com/ershoufang/'
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'}
 
 pos_url = []      #Store ershoufang pos url
-sub_pos_url = []  #Store sub pos url
+sub_pos_url = ['https://sh.lianjia.com/ershoufang/sanlin/']  #Store sub pos url
 page_urls = []
 house_urls=[]
 
@@ -70,38 +72,35 @@ def get_house_url():
         for url in xpath_result:
             print(url)
             house_urls.append(url)
-    print('Finish get_houss_url',house_url)
+        print('Finish get_houss_url',house_url)
     
 def get_house_info(url):
     print('Begain to get_house_info for url :',url)
     time.sleep(random.random())
     req = requests.get(url = url,headers = headers)
     result = etree.HTML(req.text)
+    house_id = url.split('/')[-1].split('.')[0]
     TotalPrice = result.xpath('/html/body/div[5]/div[2]/div[2]/span[1]/text()')[0]
     UnitPrice = result.xpath('/html/body/div[5]/div[2]/div[2]/div[1]/div[1]/span/text()')[0]
-    Rom_mainInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[1]/div[1]/text()')[0]       #2室两厅
-    Rom_subInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[1]/div[2]/text()')[0]        #低楼层/共12层
-    Area_mainInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[3]/div[1]/text()')[0]       #112.1平米
-    Area_subInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[3]/div[2]/text()')[0]        #2008年建/板楼
-    areaName = result.xpath('/html/body/div[5]/div[2]/div[4]/div[2]/span[2]/text()')[0]          #浦东 金杨 内环至中环
-    return(TotalPrice,UnitPrice,Rom_mainInfo,Rom_subInfo,Area_mainInfo,Area_subInfo,areaName)
+    Rom_mainInfo = result.xpath('//*[@id="introduction"]/div/div/div[1]/div[2]/ul/li[1]/text()')[0]
+    Rom_subInfo = result.xpath('//*[@id="introduction"]/div/div/div[1]/div[2]/ul/li[2]/text()')[0]
+    Area_mainInfo = result.xpath('//*[@id="introduction"]/div/div/div[1]/div[2]/ul/li[3]/text()')[0]
+    Area_subInfo = result.xpath('/html/body/div[5]/div[2]/div[3]/div[3]/div[2]/text()')[0]
+    label = result.xpath('/html/body/div[5]/div[2]/div[4]/div[1]/a[1]/text()')[0]
+    return(house_id,TotalPrice,UnitPrice,Rom_mainInfo,Rom_subInfo,Area_mainInfo,Area_subInfo,label,url)
     
-    
-def data_to_db():
-    for i in range (0,len(Cells)):
-        mydb.update_table(HousePos[i],Cells[i],High[i],TotalH[i],HouseYear[i],HouseType[i],HouseSize[i],TotalP[i],UnitP[i],HouseInter[i],HouseUrl[i])
-        print("Update infor of ",i)
 
 def main():
-#    get_pos_url()'ascii' codec can't encode character u'\u5ba4' in position 1: ordinal not in range(128)
+#    get_pos_url()
 #    get_sub_pos_url()
-#    get_page_url()
-#    get_house_url()
-    print(get_house_info('https://sh.lianjia.com/ershoufang/107100503895.html'))
-#    mydb.create_db()
-#    mydb.create_table()
-#    for url in house_urls:
-#        print(url)
-#        getdata(page_url)
-#        data_to_db()
+    get_page_url()
+    get_house_url()
+    mydb.create_db()
+    mydb.create_table()
+    for url in house_urls:
+        print(url)
+        data = get_house_info(url)
+        mydb.update_table(data)
+
+sub_url = 'https://sh.lianjia.com/ershoufang/sanlin/'
 main()
