@@ -4,21 +4,22 @@ import requests
 from lxml import etree
 import datetime
 import time
-#import mydb
+import mydb
 import random
+import threading
 
-#pos_urls = []      #Store ershoufang pos url
-sub_pos_url = []  #Store sub pos url
-page_urls = []
-house_urls=[]
+pos_urls = []      #Store ershoufang pos url  https://sh.lianjia.com/ershoufang/pudong/
+sub_pos_urls = []  #Store sub pos url       https://sh.lianjia.com/ershoufang/beicai/
+page_urls = []      #https://sh.lianjia.com/ershoufang/beicai/pg3/
+id_urls=[]       #https://sh.lianjia.com/ershoufang/107100784617.html
 
 def get_url(url):
-    print('Begin Get URL ',url)
+#    print('Begin Get URL ',url)
     headers = headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'}
     try:
         req = requests.get(url = url,headers = headers)
         res = req.content
-        print('Finish Get URL',url)
+#        print('Finish Get URL',url)
         time.sleep(random.random())
         return res
     except requests.exceptions.HTTPError as e:
@@ -61,27 +62,37 @@ def get_pos_url(pos_url):
         pos_urls.append('https://sh.lianjia.com'+str(pos))
     return pos_urls
 
-def get_sub_pos_url(sub_pos_url):
-    sub_pos_urls = []
-    sub_pos_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href'
-    result = xpath_filter(sub_pos_url,sub_pos_rule)
-    for sub_pos in result:
-        sub_pos_urls.append('https://sh.lianjia.com'+str(sub_pos))
-    return sub_pos_urls
+def get_sub_pos_url():
+    global pos_urls,sub_pos_urls
+    while(len(pos_urls)):
+        sub_pos_url = pos_urls[0]
+        pos_urls.pop(0)
+        sub_pos_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href'
+        result = xpath_filter(sub_pos_url,sub_pos_rule)
+        for sub_pos in result:
+            sub_pos_urls.append('https://sh.lianjia.com'+str(sub_pos))
 
-def get_page_url(page_url):
-    page_urls = []
-    page_rule = '/html/body/div[4]/div[1]/div[8]/div[2]/div/@page-data'
-    result = xpath_filter(page_url,page_rule)
-    if(result == '[]'):
-        print("Total number in this URL less than 30")
-        page_urls.append(page_url)
-    else:
-        total_page = str(result).split(',')[0].split(':')[1]
-        for page in range(1,int(total_page)+1):
-            page_urls.append(page_url+'pg'+str(page))
-    return page_urls
-    
+def get_page_url():
+    global sub_pos_urls,page_urls
+    time.sleep(10)
+    while(len(sub_pos_urls)):
+        starttime = datetime.datetime.now()
+        page_url = sub_pos_urls[0]
+        sub_pos_urls.pop(0)
+        page_rule = '/html/body/div[4]/div[1]/div[8]/div[2]/div/@page-data'
+        result = xpath_filter(page_url,page_rule)
+        while(len(result)):
+            #print('Len of sub_pos_urls',len(sub_pos_urls))
+            total_page = str(result).split(',')[0].split(':')[1]
+            for page in range(1,int(total_page)+1):
+                page_urls.append(page_url+'pg'+str(page))
+                #print('Len of page_urls',len(page_urls))
+        else:
+            print("Total number in this URL less than 30")
+            page_urls.append(page_url)
+        endtime = datetime.datetime.now()
+        print('One sub_pos_url use time:',endtime-starttime)
+
 def get_id_url(id_url):
     id_urls = []
     id_rule = '/html/body/div[4]/div[1]/ul/li[position()<last()+1]/a/@href'
@@ -101,35 +112,18 @@ def get_house_info(url):
     Area_subInfo = '/html/body/div[5]/div[2]/div[3]/div[3]/div[2]/text()'
     label = '/html/body/div[5]/div[2]/div[4]/div[1]/a[1]/text()'
     house_info = xpath_filter_8rule(url,id,TotalPrice,UnitPrice,Rom_mainInfo,Rom_subInfo,Area_mainInfo,Area_subInfo,label)
-    return(house_info)
-    
+ #   mydb.update_table(house_info)
 
-def main():
+if __name__ == '__main__':
     url = 'https://sh.lianjia.com/ershoufang/'
-
-    '''
-    pos_url = 'https://sh.lianjia.com/ershoufang/pudong/'
-    sub_pos_url = 'https://sh.lianjia.com/ershoufang/beicai/'
-    id_url = 'https://sh.lianjia.com/ershoufang/beicai/pg1'
-    house_url = 'https://sh.lianjia.com/ershoufang/107002277651.html'
-
-    print('Start at:',datetime.datetime.now().time())
-    '
+#    mydb.create_table()
     pos_urls = get_pos_url(url)
-    print(pos_urls)
-    
-    sub_pos_urls = get_sub_pos_url(pos_url)
-    print(sub_pos_urls)
-    
-    page_urls = get_page_url(sub_pos_url)
-    print(page_urls)
-
-    id_urls = get_id_url(id_url)
-    print(id_urls)
-    house_info = get_house_info(house_url)
-    print(house_info)
-
-    print('Finish  at',datetime.datetime.now().time())
-    '''
-
-main()
+    for i in range(10):
+        t1 = threading.Thread(target=get_sub_pos_url)
+        t1.start()
+        t2 = threading.Thread(target=get_page_url)
+        t2.start()
+        #t3 = threading.Thread(target= get_id_url)
+        #t4 = threading.Thread(target= get_house_info)
+        
+        
