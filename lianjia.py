@@ -12,7 +12,7 @@ url = 'https://sh.lianjia.com/ershoufang/'
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'}
 
 pos_url = []      #Store ershoufang pos url
-sub_pos_url = ['https://sh.lianjia.com/ershoufang/sanlin/']  #Store sub pos url
+sub_pos_url = []  #Store sub pos url
 page_urls = []
 house_urls=[]
 
@@ -92,7 +92,7 @@ def get_house_info(url):
 
 def main():
 #    get_pos_url()
-#    get_sub_pos_url()
+    get_sub_pos_url()
     get_page_url()
     get_house_url()
     mydb.create_db()
@@ -102,5 +102,6 @@ def main():
         data = get_house_info(url)
         mydb.update_table(data)
 
-sub_url = 'https://sh.lianjia.com/ershoufang/sanlin/'
+pos_url = ['https://sh.lianjia.com/ershoufang/pudong/']
+#sub_url = 'https://sh.lianjia.com/ershoufang/sanlin/'
 main()
