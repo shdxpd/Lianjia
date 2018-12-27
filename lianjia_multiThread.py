@@ -8,18 +8,20 @@ import mydb
 import random
 import threading
 
+sem=threading.Semaphore(10) 
+
+threads  = []
+
 pos_urls = []      #Store ershoufang pos url  https://sh.lianjia.com/ershoufang/pudong/
-sub_pos_urls = []  #Store sub pos url       https://sh.lianjia.com/ershoufang/beicai/
+sub_pos_urls = []  #Store sub pos url 
 page_urls = []      #https://sh.lianjia.com/ershoufang/beicai/pg3/
 id_urls=[]       #https://sh.lianjia.com/ershoufang/107100784617.html
 
 def get_url(url):
-#    print('Begin Get URL ',url)
     headers = headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'}
     try:
         req = requests.get(url = url,headers = headers)
         res = req.content
-#        print('Finish Get URL',url)
         time.sleep(random.random())
         return res
     except requests.exceptions.HTTPError as e:
@@ -62,36 +64,32 @@ def get_pos_url(pos_url):
         pos_urls.append('https://sh.lianjia.com'+str(pos))
     return pos_urls
 
-def get_sub_pos_url():
-    global pos_urls,sub_pos_urls
-    while(len(pos_urls)):
-        sub_pos_url = pos_urls[0]
-        pos_urls.pop(0)
-        sub_pos_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href'
-        result = xpath_filter(sub_pos_url,sub_pos_rule)
-        for sub_pos in result:
-            sub_pos_urls.append('https://sh.lianjia.com'+str(sub_pos))
+def get_sub_pos_url(sub_pos_url):
+    global sub_pos_urls
+    sub_pos_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href'
+    result = xpath_filter(sub_pos_url,sub_pos_rule)
+    lock.acquire()
+    for sub_pos in result:
+        sub_pos_urls.append('https://sh.lianjia.com'+str(sub_pos))
+    lock.release()
 
-def get_page_url():
-    global sub_pos_urls,page_urls
-    time.sleep(10)
-    while(len(sub_pos_urls)):
-        starttime = datetime.datetime.now()
-        page_url = sub_pos_urls[0]
-        sub_pos_urls.pop(0)
-        page_rule = '/html/body/div[4]/div[1]/div[8]/div[2]/div/@page-data'
-        result = xpath_filter(page_url,page_rule)
-        while(len(result)):
-            #print('Len of sub_pos_urls',len(sub_pos_urls))
-            total_page = str(result).split(',')[0].split(':')[1]
-            for page in range(1,int(total_page)+1):
-                page_urls.append(page_url+'pg'+str(page))
-                #print('Len of page_urls',len(page_urls))
-        else:
-            print("Total number in this URL less than 30")
-            page_urls.append(page_url)
-        endtime = datetime.datetime.now()
-        print('One sub_pos_url use time:',endtime-starttime)
+def get_page_url(page_url):
+    global page_urls
+    page_rule = '/html/body/div[4]/div[1]/div[8]/div[2]/div/@page-data'
+    result = xpath_filter(page_url,page_rule)
+    while(len(result)):
+        total_page = str(result).split(',')[0].split(':')[1]
+        lock.acquire()       
+        for page in range(1,int(total_page)+1):
+           # print (page)
+            page_urls.append(page_url+'pg'+str(page))
+        lock.release()
+    else:
+        print("Total number in this URL less than 30")
+        lock.acquire()
+        page_urls.append(page_url)
+        lock.release()
+    
 
 def get_id_url(id_url):
     id_urls = []
@@ -113,17 +111,31 @@ def get_house_info(url):
     label = '/html/body/div[5]/div[2]/div[4]/div[1]/a[1]/text()'
     house_info = xpath_filter_8rule(url,id,TotalPrice,UnitPrice,Rom_mainInfo,Rom_subInfo,Area_mainInfo,Area_subInfo,label)
  #   mydb.update_table(house_info)
+    thread  = []
+
 
 if __name__ == '__main__':
+
     url = 'https://sh.lianjia.com/ershoufang/'
-#    mydb.create_table()
+    lock=threading.Lock()
+
     pos_urls = get_pos_url(url)
-    for i in range(10):
-        t1 = threading.Thread(target=get_sub_pos_url)
+    print('Len of pos_urls',len(pos_urls))
+    
+    for i in range(len(pos_urls)):
+        #print('Get_sub_pos_url progress:\r',i)
+        #print('Get_sub_pos_url Total:\r',len(pos_urls))
+        t1= threading.Thread(target = get_sub_pos_url,args=(pos_urls[i],))
         t1.start()
-        t2 = threading.Thread(target=get_page_url)
-        t2.start()
-        #t3 = threading.Thread(target= get_id_url)
-        #t4 = threading.Thread(target= get_house_info)
+        t1.join()
+    print('Len of sub_pos_urls is :',len(sub_pos_urls))
+    with sem:
+        for i in range(len(sub_pos_urls)):
+            #print('Get_page_url progress:',i)
+            #print('Get_page_url Total:',len(sub_pos_urls))
+            t2 = threading.Thread(target=get_page_url,args=(sub_pos_urls[i],))
+            t2.start()
+            t2.join()
+    print('Len of page_url is :',len(page_urls))
         
         
