@@ -64,41 +64,62 @@ def get_pos_url(pos_url):
         pos_urls.append('https://sh.lianjia.com'+str(pos))
     return pos_urls
 
-def get_sub_pos_url(sub_pos_url):
-    global sub_pos_urls
-    sub_pos_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href'
-    result = xpath_filter(sub_pos_url,sub_pos_rule)
-    lock.acquire()
-    for sub_pos in result:
-        sub_pos_urls.append('https://sh.lianjia.com'+str(sub_pos))
-    lock.release()
-
-def get_page_url(page_url):
-    global page_urls
-    page_rule = '/html/body/div[4]/div[1]/div[8]/div[2]/div/@page-data'
-    result = xpath_filter(page_url,page_rule)
-    while(len(result)):
-        total_page = str(result).split(',')[0].split(':')[1]
-        lock.acquire()       
-        for page in range(1,int(total_page)+1):
-           # print (page)
-            page_urls.append(page_url+'pg'+str(page))
-        lock.release()
-    else:
-        print("Total number in this URL less than 30")
+def get_sub_pos_url(i):
+    global pos_urls,sub_pos_urls
+    while(len(pos_urls)):
+        lock.acquire
+        url = pos_urls[0]
+        pos_urls.pop(0)
+        print('Get_sub_pos_url left url :',len(pos_urls),end='\r')
+        time.sleep(0.01)
+        lock.release
+        sub_pos_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href'
+        result = xpath_filter(url,sub_pos_rule)
+        
         lock.acquire()
-        page_urls.append(page_url)
+        for sub_pos in result:
+            sub_pos_urls.append('https://sh.lianjia.com'+str(sub_pos))
         lock.release()
-    
+        time.sleep(0.01)
 
-def get_id_url(id_url):
-    id_urls = []
-    id_rule = '/html/body/div[4]/div[1]/ul/li[position()<last()+1]/a/@href'
-    result = xpath_filter(id_url,id_rule)
-    for id in result:
-        print(id)
-        id_urls.append(id)
-    return id_urls
+def get_page_url(i):
+    global sub_pos_urls,page_urls
+    while(len(sub_pos_urls)):
+        lock.acquire()
+        url = sub_pos_urls[0]
+        sub_pos_urls.pop(0)
+        print('Get_sub_pos_url left url :',len(sub_pos_urls),end='\r')
+        time.sleep(0.01)
+        lock.release()
+        page_rule = '/html/body/div[4]/div[1]/div[8]/div[2]/div/@page-data'
+        result = xpath_filter(url,page_rule)
+        while(len(result)):
+            total_page = str(result).split(',')[0].split(':')[1]
+            lock.acquire()       
+            for page in range(1,int(total_page)+1):
+                page_urls.append(url+'pg'+str(page))
+            lock.release()
+            break
+        else:
+            lock.acquire()
+            page_urls.append(url)
+            lock.release()
+    
+def get_id_url(i):
+    global page_urls,id_urls
+    while(len(page_urls)):
+        lock.acquire()
+        url = page_urls[0]
+        page_urls.pop(0)
+        print('Get_id_url left url :',len(page_urls),end='\r')
+        time.sleep(0.01)
+        lock.release()
+        id_rule = '/html/body/div[4]/div[1]/ul/li[position()<last()+1]/a/@href'
+        result = xpath_filter(url,id_rule)
+        lock.acquire()
+        for id in result:
+            id_urls.append(id)
+        lock.release()
     
 def get_house_info(url):
     id = '/html/body/div[5]/div[2]/div[1]/@log-mod'
@@ -118,24 +139,29 @@ if __name__ == '__main__':
 
     url = 'https://sh.lianjia.com/ershoufang/'
     lock=threading.Lock()
-
     pos_urls = get_pos_url(url)
     print('Len of pos_urls',len(pos_urls))
     
-    for i in range(len(pos_urls)):
-        #print('Get_sub_pos_url progress:\r',i)
-        #print('Get_sub_pos_url Total:\r',len(pos_urls))
-        t1= threading.Thread(target = get_sub_pos_url,args=(pos_urls[i],))
+    for i in range(0,10):
+        t1= threading.Thread(target = get_sub_pos_url,args=(i,))
         t1.start()
-        t1.join()
+    t1.join()  
     print('Len of sub_pos_urls is :',len(sub_pos_urls))
-    with sem:
-        for i in range(len(sub_pos_urls)):
-            #print('Get_page_url progress:',i)
-            #print('Get_page_url Total:',len(sub_pos_urls))
-            t2 = threading.Thread(target=get_page_url,args=(sub_pos_urls[i],))
-            t2.start()
-            t2.join()
-    print('Len of page_url is :',len(page_urls))
+    print('')
+    
+    for i in range(0,10):
+        t2 = threading.Thread(target=get_page_url,args=(i,))
+        t2.start()
+    t2.join()
+    print('Len of page_urls is :',len(page_urls))
+    print('')
+
+    for i in range(0,10):
+        t3 = threading.Thread(target=get_id_url,args = (i,))
+        t3.start()
+    t3.join()
+    print('Len of id_urls is:',len(id_urls))
+    print('')
+
         
         
