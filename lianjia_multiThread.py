@@ -29,6 +29,7 @@ def get_url(url):
     try:
         req = requests.get(url = url,headers = headers)
         res = req.content
+        time.sleep((random.randint(1,1000))/1000)
         return res
     except requests.exceptions.HTTPError as e:
         print('HTTP Error :'+str(e))
@@ -85,6 +86,8 @@ def get_sub_pos_url(i):
                 temp_url = ''
                 if hanzi_result[x] == '老闵行':
                     temp_url = 'https://sh.lianjia.com/ershoufang/laominhang/'
+                if hanzi_result[x] == '莘庄':
+                    temp_url = 'https://sh.lianjia.com/ershoufang/xinzhuang5/'
                 else:
                     sub_pos = lazy_pinyin(hanzi_result[x])
                     for i in range(len(sub_pos)):
@@ -112,29 +115,32 @@ def get_page_url(i):
             lock.acquire()
             page_urls.append(page_url+'pg'+str(page))
             lock.release()
-    
-def get_house_info(url):
-    global id_urls_3w,id_urls
+
+def get_house_info(x):
     while(len(page_urls)):
+        house_infos = []
         lock.acquire()
         url = page_urls[0]
         page_urls.pop(0)
         lock.release()
-        print('pages need to get info:',len(page_urls))         
-        total_house_in_page = (xpath_filter(url,'/html/body/div[4]/div[1]/ul/li[last()]/a/@data-log_index'))[0]
-        print(total_house_in_page)
+        print('pages need to get info:',len(page_urls))
+        total_house_result = xpath_filter(url,'/html/body/div[4]/div[1]/ul/li[last()]/a/@data-log_index')
+        if len(total_house_result):         
+            total_house_in_page = (total_house_result)[0]
+        else:
+            break
         for i in range(1,int(total_house_in_page)+1):
-            print(i)
-            id = '/html/body/div[4]/div[1]/ul/li['+str(i)+']/div[1]/div[1]/a/@data-housecode'
+            id = '/html/body/div[4]/div[1]/ul/li['+str(i)+']/div[1]/div[1]/a/@href'
             TotalPrice = '/html/body/div[4]/div[1]/ul/li['+str(i)+']/div[1]/div[6]/div[1]/span/text()'
             UnitPrice = '/html/body/div[4]/div[1]/ul/li['+str(i)+']/div[1]/div[6]/div[2]/span/text()'
             house_old = '/html/body/div[4]/div[1]/ul/li['+str(i)+']/div[1]/div[3]/div/text()'
             house_size = '/html/body/div[4]/div[1]/ul/li['+str(i)+']/div[1]/div[2]/div/text()'
             house_address = '/html/body/div[4]/div[1]/ul/li['+str(i)+']/div[1]/div[2]/div/a/text()'
             house_info = xpath_filter_6rule(url,id,TotalPrice,UnitPrice,house_old,house_size,house_address)
-            lock.acquire()
-            mydb.update_table(house_info)
-            lock.release()
+            house_infos.append(house_info) 
+        lock.acquire()
+        mydb.update_table(house_infos)
+        lock.release()
 
 if __name__ == '__main__':
 
@@ -143,8 +149,8 @@ if __name__ == '__main__':
     pos_urls = get_pos_url(url)
     print('Len of pos_urls',len(pos_urls))
     
-    #mydb.create_db()
-   # mydb.create_table()
+    mydb.create_db()
+    mydb.create_table()
     ts_final = []
     ts_t1 = []
     for i in range(0,10):
@@ -169,8 +175,8 @@ if __name__ == '__main__':
     print('')
 
     ts_t3 = []
-    for i in range(0,1):
-        t3 = threading.Thread(target=get_house_info,args = (i,))
+    for i in range(0,50):
+        t3 = threading.Thread(target=get_house_info,args=(i,))
         ts_t3.append(t3)
     for t3 in ts_t3:
         t3.start()

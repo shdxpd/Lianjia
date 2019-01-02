@@ -10,23 +10,24 @@ def create_db():
 def create_table():
     conn = sqlite3.connect('Lianjia.db')
     cu = conn.cursor()
-    cu.execute('''CREATE TABLE 'table_1225' (
-        ‘House_id’ PRIMARY KEY,
+    cu.execute('''CREATE TABLE IF NOT EXISTS 'table_0102' (
+        'House_URL' PRIMARY KEY,
         'TotalPrice',
         'UnitPrice',
         'house_old',
         'house_size',
         'house_address'
         )''')
-    print("Create_table table_1228 success")
+    print("Create_table table_0102 success")
     conn.commit()
     conn.close()
 
-def update_table(data):
-    print('Update_table for',data)
-    save_sql = 'INSERT INTO table_1225 values (?, ?, ?, ?, ?, ?)'
+def update_table(datas):
+#    print('Update_table OR IGNORE for',data)
+    save_sql = 'INSERT OR IGNORE INTO table_0102 values (?, ?, ?, ?, ?, ?)'
     conn = sqlite3.connect('Lianjia.db')
     cu = conn.cursor()
-    cu.execute(save_sql,data)
+    for data in datas:
+        cu.execute(save_sql,data)
     conn.commit()
     conn.close()
