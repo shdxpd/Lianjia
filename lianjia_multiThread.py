@@ -8,6 +8,8 @@ import mydb
 import random
 import threading
 import math
+import pypinyin
+from pypinyin import lazy_pinyin 
 
 pos_urls = []      #Store ershoufang pos url  https://sh.lianjia.com/ershoufang/pudong/
 sub_pos_urls = []  #Store sub pos url 
@@ -16,11 +18,17 @@ id_urls=[]       #https://sh.lianjia.com/ershoufang/107100784617.html
 id_urls_3w = [] #Back up id_urls every 3w
 
 def get_url(url):
-    headers = headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:56.0) Gecko/20100101 Firefox/56.0',
+                'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Host':'sh.lianjia.com',
+                'Accept-Language':'en-US,en;q=0.5',
+                'Accept-Encoding':'gzip, deflate, br',
+                'Connection':'keep-alive',
+                'Upgrade-Insecure=Requests':'1'
+                }
     try:
         req = requests.get(url = url,headers = headers)
         res = req.content
-        time.sleep(random.random())
         return res
     except requests.exceptions.HTTPError as e:
         print('HTTP Error :'+str(e))
@@ -66,12 +74,26 @@ def get_sub_pos_url(i):
         url = pos_urls[0]
         pos_urls.pop(0)
         sub_pos_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/@href'
-        result = xpath_filter(url,sub_pos_rule)
-
-        for sub_pos in result:
+        sub_pos_hanzi_rule = '/html/body/div[3]/div/div[1]/dl[2]/dd/div[1]/div[2]/a[position()<last()+1]/text()'
+        url_result = xpath_filter(url,sub_pos_rule)
+        hanzi_result = xpath_filter(url,sub_pos_hanzi_rule)
+#        print(url)
+        for x in range(len(url_result)):                       
+            temp_url = 'https://sh.lianjia.com'+ url_result[x]
+            if temp_url == url:
+                print(hanzi_result[x])
+                temp_url = ''
+                if hanzi_result[x] == '老闵行':
+                    temp_url = 'https://sh.lianjia.com/ershoufang/laominhang/'
+                else:
+                    sub_pos = lazy_pinyin(hanzi_result[x])
+                    for i in range(len(sub_pos)):
+                        temp_url += str(sub_pos[i])
+                    temp_url = 'https://sh.lianjia.com/ershoufang/' + temp_url
+            sub_pos_urls.append(temp_url)
             lock.acquire()
-            sub_pos_urls.append('https://sh.lianjia.com'+str(sub_pos))
             lock.release()
+
 
 def get_page_url(i):
     global sub_pos_urls,page_urls,x
@@ -125,7 +147,7 @@ if __name__ == '__main__':
    # mydb.create_table()
     ts_final = []
     ts_t1 = []
-    for i in range(0,5):
+    for i in range(0,10):
         t1= threading.Thread(target = get_sub_pos_url,args=(i,))
         ts_t1.append(t1)
     for t1 in ts_t1:
@@ -133,7 +155,7 @@ if __name__ == '__main__':
     for t1 in ts_t1:
         t1.join()  
     print('Len of sub_pos_urls is :',len(sub_pos_urls))
-    
+    print('')
     ts_t2 = []
     x = -1
     for i in range(0,25):
