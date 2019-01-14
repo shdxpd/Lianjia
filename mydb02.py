@@ -25,6 +25,14 @@ def update_table(datas):
         cu.execute(save_sql,data)
     conn.commit()
 
+def get_data():
+    conn = sqlite3.connect('URL.db')
+    cu = conn.cursor()
+    cu.execute('select * from url_total')
+    pages = cu.fetchall()
+    conn.close()
+    return pages
+
 def close_table():
     conn = sqlite3.connect('URL.db')
     conn.close()
